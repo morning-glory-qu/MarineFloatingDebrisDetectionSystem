@@ -1,28 +1,30 @@
-import torch
-import cv2
-import numpy as np
 from pathlib import Path
-import logging
-from typing import Union, Optional, List, Dict, Tuple
+from typing import Optional
+
 from ultralytics import YOLO
 
 # 导入项目配置
-from ..config import MODEL_CONFIG, DEVICE_CONFIG
 from ..utils.logging_utils import setup_logger
 
 logger = setup_logger(__name__)
 
-def load_model(self, model_path: Optional[str] = None,
-               device: Optional[str] = None) -> Tuple[bool, YOLO]:
+
+def load_model(self,
+               model_path: Optional[str] = None,
+               device: Optional[str] = None) -> tuple[bool, None] | tuple[bool, YOLO]:
     """
     加载预训练的YOLO11模型
 
     Args:
-        model_path: 模型文件路径
-        device: 设备类型
+        :param device:模型文件路径。
+        :param model_path:设备类型，如'cuda'、'cpu'等。
+        :param self:类实例自身
 
     Returns:
-        Tuple[bool, any]: (加载是否成功, YOLO模型实例)
+        Tuple[bool, YOLO]: 返回元组，包含两个元素：
+            - bool: 模型加载是否成功（True/False）
+            - YOLO: 加载成功的YOLO模型实例，如果加载失败则返回None
+
     """
     # 更新参数
     if model_path is not None:

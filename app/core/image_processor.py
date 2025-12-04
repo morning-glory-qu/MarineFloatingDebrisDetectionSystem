@@ -79,4 +79,3 @@ class ImageProcessor:
         tensor = torch.from_numpy(tensor).float()
 
         return tensor, original_shape
-
