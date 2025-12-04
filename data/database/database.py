@@ -1,8 +1,3 @@
-"""
-MySQL数据库操作模块
-封装海洋垃圾检测系统的数据库操作
-"""
-
 import json
 from datetime import datetime
 from typing import List, Dict, Optional, Any
@@ -22,6 +17,7 @@ def _format_detection_record(record: Dict) -> Dict:
     if isinstance(record.get('timestamp'), datetime):
         record['timestamp'] = record['timestamp'].isoformat()
     return record
+
 
 def _format_garbage_details(details: List[Dict]) -> List[Dict]:
     """格式化垃圾详情"""
@@ -43,7 +39,8 @@ def _format_garbage_details(details: List[Dict]) -> List[Dict]:
 
 class MarineDebrisMySQL:
     """
-    海洋垃圾检测MySQL数据库操作类
+    MySQL数据库操作模块
+    封装海洋垃圾检测系统的数据库操作
     """
 
     def __init__(self,
@@ -287,9 +284,9 @@ class MarineDebrisMySQL:
             cursor = self.conn.cursor(dictionary=True)
 
             query_sql = """
-                        SELECT id, timestamp, source_type, source_path, total_count, processed_file_path, detection_duration, status, created_at
+                        SELECT id, TIMESTAMP, source_type, source_path, total_count, processed_file_path, detection_duration, status, created_at
                         FROM detection_history
-                        ORDER BY timestamp DESC
+                        ORDER BY TIMESTAMP DESC
                             LIMIT %s \
                         """
 
@@ -358,8 +355,6 @@ class MarineDebrisMySQL:
         except Error as e:
             logger.error(f"查询检测详情失败: {e}")
             return {}
-
-
 
     def get_statistics(self,
                        start_date: str = None,
@@ -467,13 +462,13 @@ class MarineDebrisMySQL:
 
             trend_sql = """
                         SELECT
-                            DATE (timestamp) as date, COUNT (*) as detection_count, SUM (total_count) as garbage_count, AVG (detection_duration) as avg_duration
+                            DATE (TIMESTAMP) AS DATE, COUNT (*) AS detection_count, SUM (total_count) AS garbage_count, AVG (detection_duration) AS avg_duration
                         FROM detection_history
-                        WHERE timestamp >= DATE_SUB(CURDATE() \
+                        WHERE TIMESTAMP >= DATE_SUB(CURDATE() \
                             , INTERVAL %s DAY)
                           AND status = 'completed'
-                        GROUP BY DATE (timestamp)
-                        ORDER BY date \
+                        GROUP BY DATE (TIMESTAMP)
+                        ORDER BY DATE \
                         """
 
             cursor.execute(trend_sql, (days,))

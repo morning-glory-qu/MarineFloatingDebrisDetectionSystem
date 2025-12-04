@@ -5,13 +5,14 @@ description = "Add your description here"
 requires-python = ">=3.12"
 dependencies = [
     "aiofiles>=25.1.0",
-    "fastapi>=0.123.0",
+    "fastapi>=0.123.5",
     "ffmpeg-python>=0.2.0",
+    "mysql-connector-python>=9.5.0",
     "python-dotenv>=1.2.1",
     "python-multipart>=0.0.20",
     "torch>=2.7.0",
     "torchvision>=0.22.0",
-    "ultralytics>=8.3.233",
+    "ultralytics>=8.3.234",
 ]
 
 [tool.uv.sources]
