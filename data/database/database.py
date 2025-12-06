@@ -373,72 +373,69 @@ class MarineDebrisMySQL:
             return {}
 
         try:
-            cursor = self.conn.cursor(dictionary=True)
+            with self.conn.cursor(dictionary=True) as cursor:
 
-            # 构建查询条件
-            where_conditions = []
-            params = []
+                # 构建查询条件
+                where_conditions = []
+                params = []
 
-            if start_date:
-                where_conditions.append("DATE(timestamp) >= %s")
-                params.append(start_date)
-            if end_date:
-                where_conditions.append("DATE(timestamp) <= %s")
-                params.append(end_date)
+                if start_date:
+                    where_conditions.append("DATE(timestamp) >= %s")
+                    params.append(start_date)
+                if end_date:
+                    where_conditions.append("DATE(timestamp) <= %s")
+                    params.append(end_date)
 
-            where_clause = ""
-            if where_conditions:
-                where_clause = "WHERE " + " AND ".join(where_conditions)
+                stats_sql = """
+                            SELECT COUNT(*)                         AS total_detections,
+                                   COALESCE(SUM(total_count), 0)    AS total_garbage_count,
+                                   AVG(detection_duration)          AS avg_duration,
+                                   COUNT(DISTINCT DATE (TIMESTAMP)) AS active_days
+                            FROM detection_history
+                            WHERE status = 'completed' \
+                            """
 
-            # 总体统计
-            stats_sql = f"""
-            SELECT 
-                COUNT(*) as total_detections,
-                SUM(total_count) as total_garbage_count,
-                AVG(detection_duration) as avg_duration,
-                COUNT(DISTINCT DATE(timestamp)) as active_days
-            FROM detection_history
-            {where_clause}
-            AND status = 'completed'
-            """
+                if where_conditions:
+                    stats_sql += " AND " + " AND ".join(where_conditions)
 
-            cursor.execute(stats_sql, params)
-            overall_stats = cursor.fetchone()
+                cursor.execute(stats_sql, params)
+                overall_stats = cursor.fetchone()
 
-            # 类别统计
-            class_sql = f"""
-            SELECT 
-                gd.class_name,
-                COUNT(*) as count,
-                AVG(gd.confidence) as avg_confidence
-            FROM garbage_details gd
-            JOIN detection_history dh ON gd.detection_id = dh.id
-            {where_clause.replace('timestamp', 'dh.timestamp') if where_clause else ''}
-            {'WHERE' not in where_clause and 'WHERE dh.status = "completed"' or 'AND dh.status = "completed"'}
-            GROUP BY gd.class_name
-            ORDER BY count DESC
-            """
+                # 类别统计
+                class_sql = """
+                            SELECT gd.class_name,
+                                   COUNT(*)           AS detection_count,
+                                   AVG(gd.confidence) AS avg_confidence,
+                            FROM garbage_details gd
+                                     JOIN detection_history dh ON gd.detection_id = dh.id
+                            WHERE dh.status = 'completed' \
+                            """
 
-            cursor.execute(class_sql, params)
-            class_stats = cursor.fetchall()
+                if where_conditions:
+                    dh_conditions = [cond.replace("timestamp", "dh.timestamp") for cond in where_conditions]
+                    class_sql += " AND " + " AND ".join(dh_conditions)
 
-            cursor.close()
+                class_sql += " GROUP BY gd.class_name ORDER BY detection_count DESC "
 
-            statistics = {
-                'overall': {
-                    'total_detections': overall_stats['total_detections'] or 0,
-                    'total_garbage_count': overall_stats['total_garbage_count'] or 0,
-                    'avg_duration': float(overall_stats['avg_duration']) if overall_stats['avg_duration'] else 0,
-                    'active_days': overall_stats['active_days'] or 0
-                },
-                'by_class': class_stats,
-                'period': {
-                    'start_date': start_date,
-                    'end_date': end_date
+                cursor.execute(class_sql, params)
+                class_stats = cursor.fetchall()
+
+                statistics = {
+                    'overall': {
+                        'total_detections': overall_stats.get('total_detections', 0) or 0,
+                        'total_garbage_count': overall_stats.get('total_garbage_count', 0) or 0,
+                        'avg_duration': float(overall_stats['avg_duration']) if overall_stats.get(
+                            'avg_duration') is not None else 0.0,
+                        'active_days': overall_stats.get('active_days', 0) or 0
+                    },
+                    'by_class': class_stats,
+                    'period': {
+                        'start_date': start_date,
+                        'end_date': end_date
+                    }
                 }
-            }
 
-            return statistics
+                return statistics
 
         except Error as e:
             logger.error(f"查询统计信息失败: {e}")
