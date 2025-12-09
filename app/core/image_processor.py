@@ -1,113 +1,99 @@
 import cv2
 import numpy as np
 import torch
-from typing import Union, Tuple, List
+from typing import Union, List
 
 
 class ImageProcessor:
-    """
-    深度学习图像处理器类
-    封装了图像加载、预处理和后处理功能
-    """
-
-    def __init__(self, input_size: int = 640):
-        """
-        初始化图像处理器
-
-        Args:
-            input_size: 模型输入的图像尺寸，默认640x640
-        """
+    def __init__(self, image_input: Union[str, np.ndarray], input_size: int = 640, keep_ratio: bool = True):
         self.input_size = input_size
+        self.keep_ratio = keep_ratio
 
-    @staticmethod
-    def load_image(image_input: Union[str, np.ndarray]) -> np.ndarray:
-        """
-        加载图像
-
-        Args:
-            image_input: 图像路径或numpy数组
-
-        Returns:
-            image: 加载的图像数组
-        """
         if isinstance(image_input, str):
-            image = cv2.imread(image_input)
-            if image is None:
+            img = cv2.imread(image_input)
+            if img is None:
                 raise ValueError(f"无法读取图像: {image_input}")
-            return image
+            self.original = img
         elif isinstance(image_input, np.ndarray):
-            return image_input.copy()
+            self.original = image_input.copy()
         else:
-            raise TypeError("输入必须是图像路径或numpy数组")
+            raise TypeError("image_input 必须是图像路径或 numpy 数组")
 
-    def preprocess(self, image: np.ndarray) -> Tuple[torch.Tensor, Tuple]:
-        """
-        图像预处理：尺寸缩放、归一化、通道转换等
+        # 初始化属性
+        self.rgb = cv2.cvtColor(self.original, cv2.COLOR_BGR2RGB)
+        self.resized = None
+        self.tensor = None
+        self.scale = None
+        self.pad = None
 
-        Args:
-            image: 输入图像数组
+    # ------------------------------------------------------------------
+    def preprocess(self):
+        """缩放、归一化、BCHW 转换，结果保存到对象内部"""
+        img = self.rgb
+        h, w = img.shape[:2]
 
-        Returns:
-            tensor: 预处理后的PyTorch张量
-            original_shape: 原始图像尺寸 (h, w, c)
-        """
-        original_shape = image.shape
+        if self.keep_ratio:
+            # YOLO-style letterbox
+            scale = min(self.input_size / w, self.input_size / h)
+            new_w, new_h = int(w * scale), int(h * scale)
 
-        # BGR to RGB转换
-        image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            resized = cv2.resize(img, (new_w, new_h))
 
-        # 调整尺寸到模型输入大小
-        resized = cv2.resize(image_rgb, (self.input_size, self.input_size))
+            pad_w = self.input_size - new_w
+            pad_h = self.input_size - new_h
 
-        # 像素值归一化 [0,255] -> [0,1]
-        normalized = resized / 255.0
+            pad_left = pad_w // 2
+            pad_top = pad_h // 2
 
-        # 维度转换: HWC -> CHW
-        tensor = normalized.transpose(2, 0, 1)
+            padded = cv2.copyMakeBorder(
+                resized,
+                pad_top, pad_h - pad_top,
+                pad_left, pad_w - pad_left,
+                cv2.BORDER_CONSTANT,
+                value=(114, 114, 114),
+            )
+            self.resized = padded
+            self.scale = (scale, scale)
+            self.pad = (pad_left, pad_top)
 
-        # 添加batch维度: CHW -> BCHW
-        tensor = np.expand_dims(tensor, axis=0)
+        else:
+            # 不保持比例，直接缩放
+            resized = cv2.resize(img, (self.input_size, self.input_size))
+            self.resized = resized
+            self.scale = (
+                self.input_size / w,
+                self.input_size / h,
+            )
+            self.pad = (0, 0)
 
-        # 转换为PyTorch张量
-        tensor = torch.from_numpy(tensor).float()
+        # 归一化 + CHW + BCHW
+        x = self.resized.astype(np.float32) / 255.0
+        x = x.transpose(2, 0, 1)
+        self.tensor = torch.from_numpy(x).unsqueeze(0)
 
-        return tensor, original_shape
+        return self.tensor
 
-    def resize_to_original(self, bbox: List[int], original_shape: Tuple[int, int, int]) -> List[int]:
-        """
-        将检测框坐标调整回原始图像尺寸
+    # ------------------------------------------------------------------
+    def map_bbox(self, bboxes: List[List[float]]) -> List[List[int]]:
+        """将推理结果 bbox 映射回原图"""
+        if self.scale is None:
+            raise RuntimeError("请先调用 preprocess() 生成 scale 与 pad")
 
-        Args:
-            bbox: 缩放后图像上的边界框坐标 [x1, y1, x2, y2]
-            original_shape: 原始图像尺寸 (h, w, c)
+        h0, w0 = self.original.shape[:2]
+        sx, sy = self.scale
+        px, py = self.pad
 
-        Returns:
-            bbox_original: 原始图像上的边界框坐标
-        """
-        h_orig, w_orig = original_shape[:2]
+        mapped = []
+        for x1, y1, x2, y2 in bboxes:
+            x1 = (x1 - px) / sx
+            y1 = (y1 - py) / sy
+            x2 = (x2 - px) / sx
+            y2 = (y2 - py) / sy
 
-        # 计算缩放比例
-        scale_x = w_orig / self.input_size
-        scale_y = h_orig / self.input_size
-
-        x1, y1, x2, y2 = bbox
-        x1 = int(x1 * scale_x)
-        y1 = int(y1 * scale_y)
-        x2 = int(x2 * scale_x)
-        y2 = int(y2 * scale_y)
-
-        return [x1, y1, x2, y2]
-
-    def process_pipeline(self, image_input: Union[str, np.ndarray]) -> Tuple[torch.Tensor, Tuple]:
-        """
-        完整的图像处理流水线：加载+预处理
-
-        Args:
-            image_input: 图像路径或numpy数组
-
-        Returns:
-            tensor: 预处理后的张量
-            original_shape: 原始图像尺寸
-        """
-        image = self.load_image(image_input)
-        return self.preprocess(image)
+            mapped.append([
+                int(np.clip(x1, 0, w0)),
+                int(np.clip(y1, 0, h0)),
+                int(np.clip(x2, 0, w0)),
+                int(np.clip(y2, 0, h0)),
+            ])
+        return mapped
