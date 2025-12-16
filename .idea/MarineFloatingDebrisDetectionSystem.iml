@@ -8,6 +8,8 @@
       <sourceFolder url="file://$MODULE_DIR$/notebooks" isTestSource="true" />
       <excludeFolder url="file://$MODULE_DIR$/.idea" />
       <excludeFolder url="file://$MODULE_DIR$/.venv" />
+      <excludeFolder url="file://$MODULE_DIR$/dataset" />
+      <excludeFolder url="file://$MODULE_DIR$/dataset/Annotations" />
     </content>
     <orderEntry type="jdk" jdkName="uv (MarineFloatingDebrisDetectionSystem)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />

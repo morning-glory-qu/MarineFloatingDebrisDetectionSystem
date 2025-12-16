@@ -18,10 +18,9 @@ DEVICE_CONFIG = {
 
 # 海洋垃圾类别映射（根据实际模型调整）
 DEBRIS_CLASSES = {
-    'plastic_bag': 0,
-    'plastic_bottle': 1,
-    'fishing_net': 2,
-    'foam': 3,
-    'oil': 4,
-    'other_debris': 5
+    'can': 0,
+    'form': 1,
+    'plastic': 2,
+    'plastic bottle': 3,
+    'unknow': 4,
 }
