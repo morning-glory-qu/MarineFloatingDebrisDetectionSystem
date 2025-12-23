@@ -1,7 +1,6 @@
 # 日志配置
 import logging
 import sys
-import os
 
 
 def setup_logger(name: str) -> logging.Logger:
