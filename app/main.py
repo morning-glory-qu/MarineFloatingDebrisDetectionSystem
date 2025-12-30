@@ -11,6 +11,7 @@ import numpy as np
 import torch
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 
 from api.detector import YOLODetector
 from api.image_processor import ImageProcessor
@@ -22,7 +23,7 @@ sys.path.append(BASE_DIR)
 
 logger = setup_logger(__name__)
 
-detector : YOLODetector = None
+detector: YOLODetector = None
 
 
 def draw_detections(
@@ -152,6 +153,15 @@ app = FastAPI(
     title="水面垃圾检测系统",
     version="1.0",
     lifespan=lifespan
+)
+
+# 配置CORS中间件
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],  # 允许所有方法
+    allow_headers=["*"],  # 允许所有头
 )
 
 

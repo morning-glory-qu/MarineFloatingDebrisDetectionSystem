@@ -51,7 +51,7 @@ class YOLODetector:
             # 记录类别信息用于调试
             debris_classes = {k: v for k, v in self.class_names.items()
                               if any(
-                    keyword in v.lower() for keyword in ['can', 'foam', 'plastic', 'plastic bottle', 'unknow'])}
+                    keyword in v.lower() for keyword in ['can', 'foam', 'plastic', 'plastic bottle', 'unknown'])}
             if debris_classes:
                 logger.info(f"检测到的海洋垃圾相关类别: {list(debris_classes.values())}")
         else:
