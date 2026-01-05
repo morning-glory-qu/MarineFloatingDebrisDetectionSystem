@@ -1,5 +1,4 @@
-// frontend/water-garbage-detector/src/App.tsx
-import React, {useState} from 'react';
+import React, {useState, useRef, useCallback} from 'react';
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from '@/components/ui/card';
 import {Button} from '@/components/ui/button';
 import {Tabs, TabsContent, TabsList, TabsTrigger} from '@/components/ui/tabs';
@@ -8,8 +7,7 @@ import {Progress} from '@/components/ui/progress';
 import {Badge} from '@/components/ui/badge';
 import {Alert, AlertDescription, AlertTitle} from '@/components/ui/alert';
 import {Separator} from '@/components/ui/separator';
-import {Skeleton} from '@/components/ui/skeleton';
-import {Upload, Image as ImageIcon, BarChart3, Trash2, Download, AlertCircle} from 'lucide-react';
+import {Upload, Image as ImageIcon, BarChart3, Trash2, Download, AlertCircle, RefreshCw} from 'lucide-react';
 import {
     PieChart,
     Pie,
@@ -21,15 +19,12 @@ import {
     CartesianGrid,
     Tooltip,
     Legend,
-    ResponsiveContainer,
-    LineChart,
-    Line
+    ResponsiveContainer
 } from 'recharts';
 
-// 类型定义
 interface DetectionResult {
-    id: number;
-    className: string;
+    class_id: number;
+    class_name: string;
     confidence: number;
     bbox: {
         x_min: number;
@@ -37,95 +32,218 @@ interface DetectionResult {
         x_max: number;
         y_max: number;
     };
-    area: number;
 }
 
-interface StatisticsData {
-    date: string;
-    plastic: number;
-    metal: number;
-    glass: number;
-    paper: number;
-    other: number;
+
+interface ApiResponse {
+    success: boolean;
+    data: {
+        image: string;  // 完整的data URL: "data:image/jpeg;base64,..."
+        detections: DetectionResult[];
+    };
 }
 
 const App = () => {
     const [uploading, setUploading] = useState(false);
     const [detectionResults, setDetectionResults] = useState<DetectionResult[]>([]);
-    const [originalImage, setOriginalImage] = useState<string | null>(null);
-    const [processedImage, setProcessedImage] = useState<string | null>(null);
-    const [statistics, setStatistics] = useState<StatisticsData[]>([]);
+    const [originalImage, setOriginalImage] = useState<string>('');
+    const [processedImage, setProcessedImage] = useState<string>('');
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+    const [error, setError] = useState<string | null>(null);
 
-    // 模拟上传图片
-    const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    // API基础URL
+    const API_BASE_URL = 'http://localhost:8000';
+
+    // 清理所有数据
+    const clearAllData = useCallback(() => {
+        setDetectionResults([]);
+        setOriginalImage('');
+        setProcessedImage('');
+        setSelectedFile(null);
+        setError(null);
+
+        if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+        }
+    }, []);
+
+    // 清除错误信息
+    const clearError = () => {
+        setError(null);
+    };
+
+    // 文件验证
+    const validateFile = (file: File): void => {
+        const MAX_FILE_SIZE = 10 * 1024 * 1024;
+        if (file.size > MAX_FILE_SIZE) {
+            throw new Error(`文件大小不能超过 ${MAX_FILE_SIZE / 1024 / 1024}MB`);
+        }
+
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'];
+        if (!allowedTypes.includes(file.type)) {
+            throw new Error('仅支持 JPG、PNG、WebP 格式的图片');
+        }
+    };
+
+    // 上传图片到后端API
+    const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (!file) return;
 
+        clearAllData();
+
+        setSelectedFile(file);
         setUploading(true);
-        setOriginalImage(URL.createObjectURL(file));
 
-        // 模拟API调用延迟
-        setTimeout(() => {
-            // 模拟检测结果
-            const mockResults: DetectionResult[] = [
-                {
-                    id: 1,
-                    className: '塑料',
-                    confidence: 0.95,
-                    bbox: {x_min: 100, y_min: 150, x_max: 200, y_max: 250},
-                    area: 10000
-                },
-                {
-                    id: 2,
-                    className: '金属',
-                    confidence: 0.87,
-                    bbox: {x_min: 300, y_min: 200, x_max: 350, y_max: 280},
-                    area: 5000
-                },
-                {
-                    id: 3,
-                    className: '塑料',
-                    confidence: 0.92,
-                    bbox: {x_min: 400, y_min: 100, x_max: 450, y_max: 180},
-                    area: 4000
-                },
-                {
-                    id: 4,
-                    className: '玻璃',
-                    confidence: 0.78,
-                    bbox: {x_min: 200, y_min: 300, x_max: 250, y_max: 350},
-                    area: 2500
-                },
-            ];
+        try {
+            validateFile(file);
 
-            // 模拟统计数据
-            const mockStats: StatisticsData[] = [
-                {date: '01-01', plastic: 12, metal: 5, glass: 3, paper: 2, other: 1},
-                {date: '01-02', plastic: 15, metal: 6, glass: 4, paper: 3, other: 2},
-                {date: '01-03', plastic: 18, metal: 7, glass: 5, paper: 2, other: 3},
-                {date: '01-04', plastic: 20, metal: 8, glass: 6, paper: 4, other: 2},
-                {date: '01-05', plastic: 22, metal: 9, glass: 7, paper: 3, other: 4},
-            ];
+            // 创建文件预览
+            const previewUrl = URL.createObjectURL(file);
+            setOriginalImage(previewUrl);
 
-            setDetectionResults(mockResults);
-            setProcessedImage('https://via.placeholder.com/600x400/3b82f6/ffffff?text=Processed+Image+with+Detections');
-            setStatistics(mockStats);
+            // 读取文件为Base64（完整格式）
+            const base64Image = await new Promise<string>((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result as string);
+                reader.onerror = error => reject(error);
+                reader.readAsDataURL(file);
+            });
+
+            console.log('发送数据格式:', {
+                fileType: file.type,
+                fileSize: file.size,
+                base64Prefix: base64Image.substring(0, 30)
+            });
+
+            // 发送完整格式的Base64给后端
+            const response = await fetch(`${API_BASE_URL}/detect`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    image: base64Image  // 发送完整格式：data:image/jpeg;base64,xxx
+                }),
+            });
+
+            console.log('响应状态:', response.status);
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`检测失败: ${response.status} - ${errorText}`);
+            }
+
+            const data: ApiResponse = await response.json();
+
+            // 根据后端响应结构处理
+            if (data.success && data.data) {
+                setDetectionResults(data.data.detections || []);
+
+                // 后端已经返回完整格式，直接使用
+                if (data.data.image) {
+                    setProcessedImage(data.data.image);
+                    console.log('接收到的图片数据格式:', data.data.image.substring(0, 30));
+                }
+            } else {
+                throw new Error('后端返回数据格式错误');
+            }
+
+        } catch (error) {
+            console.error('检测失败详情:', error);
+            const errorMessage = error instanceof Error ? error.message : '未知错误';
+            setError(`处理失败: ${errorMessage}`);
+        } finally {
             setUploading(false);
-        }, 1500);
+        }
+    };
+
+    // 重新检测图片
+    const reDetectImage = async () => {
+        if (!selectedFile) return;
+
+        setUploading(true);
+
+        try {
+            // 读取文件为Base64（完整格式）
+            const base64Image = await new Promise<string>((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result as string);
+                reader.onerror = error => reject(error);
+                reader.readAsDataURL(selectedFile);
+            });
+
+            const response = await fetch(`${API_BASE_URL}/detect`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    image: base64Image
+                }),
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`重新检测失败: ${response.status} - ${errorText}`);
+            }
+
+            const data: ApiResponse = await response.json();
+
+            if (data.success && data.data) {
+                setDetectionResults(data.data.detections || []);
+
+                if (data.data.image) {
+                    setProcessedImage(data.data.image);
+                }
+            } else {
+                throw new Error('后端返回数据格式错误');
+            }
+
+        } catch (error) {
+            console.error('重新检测失败:', error);
+            setError('重新检测失败，请检查后端服务');
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    // 下载检测报告
+    const downloadReport = async () => {
+        if (!selectedFile || detectionResults.length === 0) return;
+
+        const reportData = {
+            文件名: selectedFile.name,
+            上传时间: new Date().toLocaleTimeString(),
+            检测总数: detectionResults.length,
+            垃圾类型分布: getStats().byClass,
+            平均置信度: (getStats().avgConfidence * 100).toFixed(1) + '%',
+            检测详情: detectionResults,
+        };
+
+        const blob = new Blob([JSON.stringify(reportData, null, 2)], {type: 'application/json'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `海洋垃圾检测报告_${selectedFile.name.split('.')[0]}_${new Date().getTime()}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
     };
 
     // 计算统计数据
     const getStats = () => {
         const total = detectionResults.length;
         const byClass = detectionResults.reduce((acc, result) => {
-            acc[result.className] = (acc[result.className] || 0) + 1;
+            acc[result.class_name] = (acc[result.class_name] || 0) + 1;
             return acc;
         }, {} as Record<string, number>);
 
         const avgConfidence = detectionResults.reduce((sum, r) => sum + r.confidence, 0) / total || 0;
-        const totalArea = detectionResults.reduce((sum, r) => sum + r.area, 0);
 
-        return {total, byClass, avgConfidence, totalArea};
+        return {total, byClass, avgConfidence};
     };
 
     const stats = getStats();
@@ -139,28 +257,39 @@ const App = () => {
 
     const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
-    // @ts-ignore
     return (
         <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4 md:p-6">
             <div className="max-w-7xl mx-auto">
-                {/* 头部 */}
+                {error && (
+                    <Alert variant="destructive" className="mb-6">
+                        <AlertCircle className="h-4 w-4"/>
+                        <AlertTitle>错误</AlertTitle>
+                        <AlertDescription className="flex justify-between items-center">
+                            <span>{error}</span>
+                            <Button variant="outline" size="sm" onClick={clearError}>
+                                关闭
+                            </Button>
+                        </AlertDescription>
+                    </Alert>
+                )}
+
                 <header className="mb-8">
-                    <div className="flex items-center gap-3 mb-2">
-                        <div className="p-2 bg-blue-100 rounded-lg">
-                            <ImageIcon className="w-8 h-8 text-blue-600"/>
-                        </div>
-                        <div>
-                            <h1 className="text-3xl font-bold text-gray-900">海洋漂浮垃圾检测系统</h1>
-                            <p className="text-gray-600">上传海洋图像，自动识别和分类漂浮垃圾，助力海洋环境保护</p>
+                    <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-blue-100 rounded-lg">
+                                <ImageIcon className="w-8 h-8 text-blue-600"/>
+                            </div>
+                            <div>
+                                <h1 className="text-3xl font-bold text-gray-900">海洋漂浮垃圾检测系统</h1>
+                                <p className="text-gray-600">自动识别和分类漂浮垃圾</p>
+                            </div>
                         </div>
                     </div>
                     <Separator className="my-4"/>
                 </header>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* 左侧 - 上传和检测区 */}
                     <div className="space-y-6">
-                        {/* 上传卡片 */}
                         <Card
                             className="border-2 border-dashed border-gray-200 hover:border-blue-300 transition-colors">
                             <CardHeader>
@@ -169,7 +298,7 @@ const App = () => {
                                     上传海洋图片
                                 </CardTitle>
                                 <CardDescription>
-                                    支持 JPG、PNG 格式，图片大小不超过 10MB
+                                    支持 JPG、PNG、WebP 格式，最大支持 10MB
                                 </CardDescription>
                             </CardHeader>
                             <CardContent>
@@ -182,12 +311,15 @@ const App = () => {
                                                     <>
                                                         <div
                                                             className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
-                                                        <p className="mb-2 text-sm text-gray-500">分析中...</p>
+                                                        <p className="mb-2 text-sm text-gray-500">正在处理图片...</p>
                                                     </>
                                                 ) : originalImage ? (
                                                     <>
-                                                        <img src={originalImage} alt="预览"
-                                                             className="h-40 object-cover rounded-lg mb-2"/>
+                                                        <img
+                                                            src={originalImage}
+                                                            alt="预览"
+                                                            className="h-40 object-cover rounded-lg mb-2 max-w-full"
+                                                        />
                                                         <p className="text-sm text-gray-500">点击更换图片</p>
                                                     </>
                                                 ) : (
@@ -196,14 +328,16 @@ const App = () => {
                                                         <p className="mb-2 text-sm text-gray-500">
                                                             <span className="font-semibold">点击上传</span> 或拖拽图片
                                                         </p>
-                                                        <p className="text-xs text-gray-400">PNG, JPG, GIF 格式</p>
+                                                        <p className="text-xs text-gray-400">JPG, PNG, WebP
+                                                            格式，最大10MB</p>
                                                     </>
                                                 )}
                                             </div>
                                             <input
+                                                ref={fileInputRef}
                                                 type="file"
                                                 className="hidden"
-                                                accept="image/*"
+                                                accept="image/jpeg,image/png,image/jpg,image/webp"
                                                 onChange={handleImageUpload}
                                                 disabled={uploading}
                                             />
@@ -220,10 +354,6 @@ const App = () => {
                                                 <p className="text-sm text-green-600">平均置信度</p>
                                                 <p className="text-2xl font-bold">{(stats.avgConfidence * 100).toFixed(1)}%</p>
                                             </div>
-                                            <div className="bg-yellow-50 p-4 rounded-lg">
-                                                <p className="text-sm text-yellow-600">垃圾面积</p>
-                                                <p className="text-2xl font-bold">{(stats.totalArea / 1000).toFixed(1)}k</p>
-                                            </div>
                                             <div className="bg-purple-50 p-4 rounded-lg">
                                                 <p className="text-sm text-purple-600">分类数量</p>
                                                 <p className="text-2xl font-bold">{Object.keys(stats.byClass).length}</p>
@@ -231,24 +361,48 @@ const App = () => {
                                         </div>
                                     )}
 
-                                    <div className="flex gap-2">
+                                    <div className="flex gap-2 flex-wrap">
                                         <Button
-                                            onClick={() => (document.querySelector('input[type="file"]') as HTMLInputElement)?.click()}>
+                                            onClick={() => fileInputRef.current?.click()}
                                             disabled={uploading}
-                                            {uploading ? '分析中...' : '上传图片'}
+                                            className="flex-1 min-w-[120px]"
+                                        >
+                                            {uploading ? '处理中...' : '上传图片'}
                                         </Button>
                                         {detectionResults.length > 0 && (
-                                            <Button variant="outline">
-                                                <Download className="w-4 h-4 mr-2"/>
-                                                下载报告
-                                            </Button>
+                                            <>
+                                                <Button
+                                                    variant="outline"
+                                                    onClick={reDetectImage}
+                                                    disabled={uploading}
+                                                    className="flex-1 min-w-[120px]"
+                                                >
+                                                    <RefreshCw className="w-4 h-4 mr-2"/>
+                                                    重新检测
+                                                </Button>
+                                                <Button
+                                                    variant="outline"
+                                                    onClick={downloadReport}
+                                                    className="flex-1 min-w-[120px]"
+                                                >
+                                                    <Download className="w-4 h-4 mr-2"/>
+                                                    下载报告
+                                                </Button>
+                                                <Button
+                                                    variant="destructive"
+                                                    onClick={clearAllData}
+                                                    className="flex-1 min-w-[120px]"
+                                                >
+                                                    <Trash2 className="w-4 h-4 mr-2"/>
+                                                    清除所有
+                                                </Button>
+                                            </>
                                         )}
                                     </div>
                                 </div>
                             </CardContent>
                         </Card>
 
-                        {/* 结果展示卡片 */}
                         {detectionResults.length > 0 && (
                             <Card>
                                 <CardHeader>
@@ -256,6 +410,7 @@ const App = () => {
                                         <BarChart3 className="w-5 h-5"/>
                                         检测结果详情
                                     </CardTitle>
+                                    <CardDescription>检测到 {detectionResults.length} 个垃圾对象</CardDescription>
                                 </CardHeader>
                                 <CardContent>
                                     <Tabs defaultValue="table">
@@ -265,45 +420,46 @@ const App = () => {
                                             <TabsTrigger value="confidence">置信度</TabsTrigger>
                                         </TabsList>
                                         <TabsContent value="table" className="space-y-4">
-                                            <Table>
-                                                <TableHeader>
-                                                    <TableRow>
-                                                        <TableHead>垃圾类型</TableHead>
-                                                        <TableHead>置信度</TableHead>
-                                                        <TableHead>位置</TableHead>
-                                                        <TableHead>面积</TableHead>
-                                                    </TableRow>
-                                                </TableHeader>
-                                                <TableBody>
-                                                    {detectionResults.map((result) => (
-                                                        <TableRow key={result.id}>
-                                                            <TableCell>
-                                                                <Badge className={
-                                                                    result.className === '塑料' ? 'bg-blue-100 text-blue-800' :
-                                                                        result.className === '金属' ? 'bg-yellow-100 text-yellow-800' :
-                                                                            result.className === '玻璃' ? 'bg-green-100 text-green-800' :
-                                                                                'bg-gray-100 text-gray-800'
-                                                                }>
-                                                                    {result.className}
-                                                                </Badge>
-                                                            </TableCell>
-                                                            <TableCell>
-                                                                <div className="space-y-1">
-                                                                    <div className="flex justify-between text-sm">
-                                                                        <span>{(result.confidence * 100).toFixed(1)}%</span>
-                                                                    </div>
-                                                                    <Progress value={result.confidence * 100}
-                                                                              className="h-2"/>
-                                                                </div>
-                                                            </TableCell>
-                                                            <TableCell className="text-sm">
-                                                                ({result.bbox.x_min}, {result.bbox.y_min})
-                                                            </TableCell>
-                                                            <TableCell>{result.area} px²</TableCell>
+                                            <div className="max-h-96 overflow-auto">
+                                                <Table>
+                                                    <TableHeader>
+                                                        <TableRow>
+                                                            <TableHead>垃圾类型</TableHead>
+                                                            <TableHead>置信度</TableHead>
+                                                            <TableHead>位置</TableHead>
+                                                            <TableHead>面积</TableHead>
                                                         </TableRow>
-                                                    ))}
-                                                </TableBody>
-                                            </Table>
+                                                    </TableHeader>
+                                                    <TableBody>
+                                                        {detectionResults.map((result) => (
+                                                            <TableRow key={result.class_id}>
+                                                                <TableCell>
+                                                                    <Badge className={
+                                                                        result.class_name === '塑料' ? 'bg-blue-100 text-blue-800' :
+                                                                            result.class_name === '金属' ? 'bg-yellow-100 text-yellow-800' :
+                                                                                result.class_name === '玻璃' ? 'bg-green-100 text-green-800' :
+                                                                                    'bg-gray-100 text-gray-800'
+                                                                    }>
+                                                                        {result.class_name}
+                                                                    </Badge>
+                                                                </TableCell>
+                                                                <TableCell>
+                                                                    <div className="space-y-1">
+                                                                        <div className="flex justify-between text-sm">
+                                                                            <span>{(result.confidence * 100).toFixed(1)}%</span>
+                                                                        </div>
+                                                                        <Progress value={result.confidence * 100}
+                                                                                  className="h-2"/>
+                                                                    </div>
+                                                                </TableCell>
+                                                                <TableCell className="text-sm">
+                                                                    ({result.bbox.x_min}, {result.bbox.y_min})
+                                                                </TableCell>
+                                                            </TableRow>
+                                                        ))}
+                                                    </TableBody>
+                                                </Table>
+                                            </div>
                                         </TabsContent>
                                         <TabsContent value="chart">
                                             <div className="h-80">
@@ -356,9 +512,7 @@ const App = () => {
                         )}
                     </div>
 
-                    {/* 右侧 - 图片和统计区 */}
                     <div className="space-y-6">
-                        {/* 图片对比卡片 */}
                         <Card>
                             <CardHeader>
                                 <CardTitle className="flex items-center gap-2">
@@ -374,8 +528,11 @@ const App = () => {
                                         <div
                                             className="border rounded-lg overflow-hidden bg-gray-50 h-64 flex items-center justify-center">
                                             {originalImage ? (
-                                                <img src={originalImage} alt="原始图片"
-                                                     className="w-full h-full object-contain"/>
+                                                <img
+                                                    src={originalImage}
+                                                    alt="原始图片"
+                                                    className="w-full h-full object-contain"
+                                                />
                                             ) : (
                                                 <div className="text-gray-400 text-center p-4">
                                                     <ImageIcon className="w-12 h-12 mx-auto mb-2"/>
@@ -389,15 +546,24 @@ const App = () => {
                                         <div
                                             className="border rounded-lg overflow-hidden bg-gray-50 h-64 flex items-center justify-center">
                                             {processedImage ? (
-                                                <img src={processedImage} alt="检测结果"
-                                                     className="w-full h-full object-contain"/>
+                                                <img
+                                                    src={processedImage}
+                                                    alt="检测结果"
+                                                    className="w-full h-full object-contain"
+                                                />
+                                            ) : uploading ? (
+                                                <div className="text-center p-4">
+                                                    <div
+                                                        className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                                                    <p className="text-gray-500">正在分析图片...</p>
+                                                </div>
                                             ) : (
                                                 <div className="text-gray-400 text-center p-4">
                                                     <div
                                                         className="w-12 h-12 mx-auto mb-2 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center">
                                                         <AlertCircle className="w-6 h-6"/>
                                                     </div>
-                                                    <p>等待分析结果</p>
+                                                    <p>等待检测结果</p>
                                                 </div>
                                             )}
                                         </div>
@@ -405,58 +571,6 @@ const App = () => {
                                 </div>
                             </CardContent>
                         </Card>
-
-                        {/* 统计趋势卡片 */}
-                        <Card>
-                            <CardHeader>
-                                <CardTitle className="flex items-center gap-2">
-                                    <BarChart3 className="w-5 h-5"/>
-                                    检测趋势统计
-                                </CardTitle>
-                                <CardDescription>最近检测数据趋势分析</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                {statistics.length > 0 ? (
-                                    <div className="h-80">
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <LineChart data={statistics}>
-                                                <CartesianGrid strokeDasharray="3 3"/>
-                                                <XAxis dataKey="date"/>
-                                                <YAxis/>
-                                                <Tooltip/>
-                                                <Legend/>
-                                                <Line type="monotone" dataKey="plastic" stroke="#3b82f6" name="塑料"
-                                                      strokeWidth={2}/>
-                                                <Line type="monotone" dataKey="metal" stroke="#f59e0b" name="金属"
-                                                      strokeWidth={2}/>
-                                                <Line type="monotone" dataKey="glass" stroke="#10b981" name="玻璃"
-                                                      strokeWidth={2}/>
-                                                <Line type="monotone" dataKey="paper" stroke="#8b5cf6" name="纸张"
-                                                      strokeWidth={2}/>
-                                            </LineChart>
-                                        </ResponsiveContainer>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-4">
-                                        <Skeleton className="h-60 w-full"/>
-                                        <div className="space-y-2">
-                                            <Skeleton className="h-4 w-full"/>
-                                            <Skeleton className="h-4 w-3/4"/>
-                                        </div>
-                                    </div>
-                                )}
-                            </CardContent>
-                        </Card>
-
-                        {/* 环保提示卡片 */}
-                        <Alert>
-                            <Trash2 className="h-4 w-4"/>
-                            <AlertTitle>环保小贴士</AlertTitle>
-                            <AlertDescription className="space-y-2">
-                                <p>检测到的海洋垃圾中，塑料制品占比最高，占所有海洋垃圾的80%以上。</p>
-                                <p className="text-sm text-gray-600">保护海洋环境，从减少使用一次性塑料制品开始。</p>
-                            </AlertDescription>
-                        </Alert>
                     </div>
                 </div>
             </div>
