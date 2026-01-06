@@ -1,4 +1,3 @@
-import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, Navigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { HomeIcon, Upload, BarChart3, Database, Settings } from 'lucide-react';
@@ -26,9 +25,9 @@ const HomePage = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
+    <div className="min-h-screen bg-linear-to-br from-gray-50 to-blue-50">
       {/* Hero Section */}
-      <div className="relative overflow-hidden bg-gradient-to-r from-blue-600 to-teal-600 text-white">
+      <div className="relative overflow-hidden bg-linear-to-r from-blue-600 to-teal-600 text-white">
         <div className="absolute inset-0 bg-black opacity-20"></div>
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
           <div className="text-center">
@@ -66,7 +65,7 @@ const HomePage = () => {
         </div>
 
         {/* Stats */}
-        <div className="bg-gradient-to-r from-blue-50 to-teal-50 rounded-2xl p-8 mb-16">
+        <div className="bg-linear-to-r from-blue-50 to-teal-50 rounded-2xl p-8 mb-16">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             <div className="text-center">
               <div className="text-4xl font-bold text-blue-600 mb-2">10,000+</div>
@@ -94,7 +93,7 @@ const HomePage = () => {
             加入我们，利用人工智能技术为海洋环境保护贡献一份力量
           </p>
           <Link to="/detect">
-            <Button size="lg" className="bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700 px-12">
+            <Button size="lg" className="bg-linear-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700 px-12">
               开始使用
             </Button>
           </Link>
@@ -166,7 +165,7 @@ const App = () => {
             <div className="flex items-center justify-between h-16">
               <div className="flex items-center">
                 <Link to="/" className="flex items-center space-x-2">
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-r from-blue-600 to-teal-600"></div>
+                  <div className="w-8 h-8 rounded-lg bg-linear-to-r from-blue-600 to-teal-600"></div>
                   <span className="text-xl font-bold text-gray-900">海洋垃圾检测</span>
                 </Link>
 

@@ -170,9 +170,13 @@ async def root():
     return {
         "service": "水面垃圾检测系统",
         "status": "running",
-        "api_docs": "/docs",
         "version": "1.0"
     }
+
+
+@app.get("/health")
+async def health():
+    return {"status": "healthy"}
 
 
 @app.post("/detect")
@@ -206,9 +210,3 @@ async def detect_objects(request_data: dict):
     except Exception as e:
         logger.error(f"检测出错: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"检测失败: {str(e)}")
-
-
-if __name__ == "__main__":
-    import uvicorn
-
-    uvicorn.run("main:app", host="localhost", port=8000, reload=False)

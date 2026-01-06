@@ -53,8 +53,7 @@ const Detector = () => {
   const [error, setError] = useState<string | null>(null);
 
   // API基础URL
-  const API_BASE_URL = 'http://localhost:8000';
-
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
   // 清理所有数据
   const clearAllData = useCallback(() => {
     setDetectionResults([]);

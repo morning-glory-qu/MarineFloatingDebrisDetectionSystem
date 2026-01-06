@@ -7,7 +7,7 @@ from ultralytics import YOLO
 def train_model():
     data_yaml = os.path.join('datasets', 'dataset.yaml')
 
-    model = YOLO('yolov11n.pt')
+    model = YOLO('yolo11n.pt')
 
     model.train(
         data=data_yaml,  # 数据集配置文件路径
