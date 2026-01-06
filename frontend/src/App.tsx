@@ -1,6 +1,6 @@
-import { BrowserRouter as Router, Routes, Route, Link, Navigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { HomeIcon, Upload, BarChart3, Database, Settings } from 'lucide-react';
+import {BrowserRouter as Router, Routes, Route, Link, Navigate} from 'react-router-dom';
+import {Button} from '@/components/ui/button';
+import {HomeIcon, Upload, BarChart3, Database, Settings} from 'lucide-react';
 
 import Detector from './Detector';
 
@@ -8,17 +8,17 @@ import Detector from './Detector';
 const HomePage = () => {
   const features = [
     {
-      icon: <Upload className="w-6 h-6" />,
+      icon: <Upload className="w-6 h-6"/>,
       title: "智能检测",
       description: "基于深度学习模型，精准识别多种海洋垃圾类型"
     },
     {
-      icon: <BarChart3 className="w-6 h-6" />,
+      icon: <BarChart3 className="w-6 h-6"/>,
       title: "数据分析",
       description: "可视化分析垃圾分布和统计数据"
     },
     {
-      icon: <Database className="w-6 h-6" />,
+      icon: <Database className="w-6 h-6"/>,
       title: "数据管理",
       description: "历史记录存储和管理功能"
     }
@@ -40,7 +40,7 @@ const HomePage = () => {
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Link to="/detect">
                 <Button size="lg" className="bg-white text-blue-600 hover:bg-blue-50 px-8">
-                  <Upload className="w-5 h-5 mr-2" />
+                  <Upload className="w-5 h-5 mr-2"/>
                   开始检测
                 </Button>
               </Link>
@@ -93,7 +93,8 @@ const HomePage = () => {
             加入我们，利用人工智能技术为海洋环境保护贡献一份力量
           </p>
           <Link to="/detect">
-            <Button size="lg" className="bg-linear-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700 px-12">
+            <Button size="lg"
+                    className="bg-linear-to-r from-blue-600 to-teal-600 hover:from-blue-700 hover:to-teal-700 px-12">
               开始使用
             </Button>
           </Link>
@@ -134,11 +135,11 @@ const SettingsPage = () => {
               <h3 className="text-lg font-medium mb-2">检测参数</h3>
               <div className="space-y-2">
                 <label className="flex items-center space-x-2">
-                  <input type="checkbox" defaultChecked className="rounded" />
+                  <input type="checkbox" defaultChecked className="rounded"/>
                   <span>自动保存检测结果</span>
                 </label>
                 <label className="flex items-center space-x-2">
-                  <input type="checkbox" className="rounded" />
+                  <input type="checkbox" className="rounded"/>
                   <span>使用GPU加速</span>
                 </label>
               </div>
@@ -173,19 +174,19 @@ const App = () => {
                   <div className="flex items-baseline space-x-4">
                     <Link to="/">
                       <Button variant="ghost" className="flex items-center">
-                        <HomeIcon className="w-4 h-4 mr-2" />
+                        <HomeIcon className="w-4 h-4 mr-2"/>
                         首页
                       </Button>
                     </Link>
                     <Link to="/detect">
                       <Button variant="ghost" className="flex items-center">
-                        <Upload className="w-4 h-4 mr-2" />
+                        <Upload className="w-4 h-4 mr-2"/>
                         检测
                       </Button>
                     </Link>
                     <Link to="/settings">
                       <Button variant="ghost" className="flex items-center">
-                        <Settings className="w-4 h-4 mr-2" />
+                        <Settings className="w-4 h-4 mr-2"/>
                         设置
                       </Button>
                     </Link>
@@ -198,10 +199,10 @@ const App = () => {
 
         {/* 路由内容 */}
         <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/detect" element={<Detector />} />
-          <Route path="/settings" element={<SettingsPage />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="/" element={<HomePage/>}/>
+          <Route path="/detect" element={<Detector/>}/>
+          <Route path="/settings" element={<SettingsPage/>}/>
+          <Route path="*" element={<Navigate to="/" replace/>}/>
         </Routes>
       </div>
     </Router>

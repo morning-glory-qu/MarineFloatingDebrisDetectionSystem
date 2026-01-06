@@ -138,7 +138,7 @@ async def lifespan(app: FastAPI):
 
     use_device = 'cuda' if torch.cuda.is_available() else 'cpu'
     try:
-        model_path = os.path.join(BASE_DIR, "weights", "yolo11s.pt")
+        model_path = os.path.join(BASE_DIR, "weights", "best.pt")
         detector = YOLODetector(model_path=model_path, device=use_device)
         detector.load_model()
         logger.info("模型加载成功")
@@ -158,10 +158,15 @@ app = FastAPI(
 # 配置CORS中间件
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=[
+        "http://localhost:5173",
+        "http://localhost:4173",
+        "http://frontend:5173",
+        "http://frontend:4173",
+    ],
     allow_credentials=True,
-    allow_methods=["*"],  # 允许所有方法
-    allow_headers=["*"],  # 允许所有头
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
@@ -210,3 +215,9 @@ async def detect_objects(request_data: dict):
     except Exception as e:
         logger.error(f"检测出错: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"检测失败: {str(e)}")
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run(app, host="localhost", port=8000, reload=False)
